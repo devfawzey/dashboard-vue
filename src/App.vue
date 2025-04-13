@@ -1,163 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { useStorage } from '@vueuse/core'
+import {computed} from "vue";
+import {useSidebar} from "@/composables/useSidebar.ts";
+import {darkTheme, lightTheme, Notification, Notivue, type NotivueTheme} from "notivue"
+import {useDark} from "@vueuse/core";
 
-const toast = useToast()
-const route = useRoute()
-
-const open = ref(false)
-
-const links = [[{
-  label: 'Home',
-  icon: 'i-lucide-house',
-  to: '/',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Inbox',
-  icon: 'i-lucide-inbox',
-  to: '/inbox',
-  badge: '4',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Customers',
-  icon: 'i-lucide-users',
-  to: '/customers',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Settings',
-  to: '/settings',
-  icon: 'i-lucide-settings',
-  defaultOpen: true,
-  children: [{
-    label: 'General',
-    to: '/settings',
-    exact: true,
-  onSelect: () => {
-    open.value = false
-  }
-  }, {
-    label: 'Members',
-    to: '/settings/members',
-  onSelect: () => {
-    open.value = false
-  }
-  }, {
-    label: 'Notifications',
-    to: '/settings/notifications',
-  onSelect: () => {
-    open.value = false
-  }
-  }, {
-    label: 'Security',
-    to: '/settings/security',
-  onSelect: () => {
-    open.value = false
-  }
-  }]
-}], [{
-  label: 'Feedback',
-  icon: 'i-lucide-message-circle',
-  to: 'https://github.com/nuxt-ui-pro/dashboard-vue',
-  target: '_blank'
-}, {
-  label: 'Help & Support',
-  icon: 'i-lucide-info',
-  to: 'https://github.com/nuxt/ui-pro',
-  target: '_blank'
-}]]
-
-const groups = computed(() => [{
-  id: 'links',
-  label: 'Go to',
-  items: links.flat()
-}, {
-  id: 'code',
-  label: 'Code',
-  items: [{
-    id: 'source',
-    label: 'View page source',
-    icon: 'simple-icons:github',
-    to: `https://github.com/nuxt-ui-pro/dashboard-vue/blob/main/src/pages${route.path === '/' ? '/index' : route.path}.vue`,
-    target: '_blank'
-  }]
-}])
-
-const cookie = useStorage('cookie-consent', 'pending')
-if (cookie.value !== 'accepted') {
-  toast.add({
-    title: 'We use first-party cookies to enhance your experience on our website.',
-    duration: 0,
-    close: false,
-    actions: [{
-      label: 'Accept',
-      color: 'neutral',
-      variant: 'outline',
-      onClick: () => {
-        cookie.value = 'accepted'
-      }
-    }, {
-      label: 'Opt out',
-      color: 'neutral',
-      variant: 'ghost'
-    }]
-  })
+const isDark = useDark()
+const {openMobile, isMobile, collapsed} = useSidebar()
+const customMaterialTheme: NotivueTheme = {
+  ...lightTheme,
+  "--nv-success-bg": "var(--ui-bg-elevated)",
+  "--nv-success-accent": "var(--ui-primary)",
 }
+const customDarkTheme: NotivueTheme = {
+  ...darkTheme,
+  "--nv-success-bg": "var(--ui-bg-elevated)",
+  "--nv-success-accent": "var(--ui-primary)",
+}
+const notivueTheme = computed(() => isDark.value ? customDarkTheme : customMaterialTheme)
+
 </script>
-
 <template>
-  <Suspense>
-    <UApp>
-      <UDashboardGroup unit="rem" storage="local">
-        <UDashboardSidebar
-          id="default"
-          v-model:open="open"
-          collapsible
-          resizable
-          class="bg-(--ui-bg-elevated)/25"
-          :ui="{ footer: 'lg:border-t lg:border-(--ui-border)' }"
-        >
-          <template #header="{ collapsed }">
-            <TeamsMenu :collapsed="collapsed" />
-          </template>
-
-          <template #default="{ collapsed }">
-            <UDashboardSearchButton
-              :collapsed="collapsed"
-              class="bg-transparent ring-(--ui-border)"
-            />
-
-            <UNavigationMenu
-              :collapsed="collapsed"
-              :items="links[0]"
-              orientation="vertical"
-            />
-
-            <UNavigationMenu
-              :collapsed="collapsed"
-              :items="links[1]"
-              orientation="vertical"
-              class="mt-auto"
-            />
-          </template>
-
-          <template #footer="{ collapsed }">
-            <UserMenu :collapsed="collapsed" />
-          </template>
-        </UDashboardSidebar>
-
-        <UDashboardSearch :groups="groups" />
-
-        <RouterView />
-
-        <NotificationsSlideover />
-      </UDashboardGroup>
-    </UApp>
-  </Suspense>
+  <UApp>
+    <Notivue v-slot="item">
+      <Notification :theme="notivueTheme" :item="item"/>
+    </Notivue>
+    <div class="flex">
+      <USlideover
+          v-if="isMobile"
+          :ui="{content:'max-w-2xs data-[state=open]:animate-wiggle-in data-[state=closed]:animate-wiggle-out'}"
+          side="left" v-model:open="openMobile">
+        <template #content>
+          <Sidebar is-modal @update:model-value="openMobile=false"/>
+        </template>
+      </USlideover>
+      <Sidebar v-else :collapsed="collapsed"/>
+      <RouterView v-slot="{ Component }">
+        <Transition name="scale" mode="out-in">
+          <component :is="Component"/>
+        </Transition>
+      </RouterView>
+    </div>
+  </UApp>
 </template>

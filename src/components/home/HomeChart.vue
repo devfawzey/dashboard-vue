@@ -1,53 +1,26 @@
 <script setup lang="ts">
-import { computed, useTemplateRef, ref, watch } from 'vue'
-import { eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, format } from 'date-fns'
-import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from '@unovis/vue'
-import { useElementSize } from '@vueuse/core'
-import type { Period, Range } from '../../types'
+import {VisXYContainer, VisCrosshair, VisTooltip, VisAxis, VisLine, VisArea} from '@unovis/vue'
+import {eachDayOfInterval, eachMonthOfInterval, eachWeekOfInterval, format} from "date-fns"
+import {computed, ref, watch, useTemplateRef} from "vue";
+import {useElementSize} from "@vueuse/core";
+import type {Period, Range} from "@/types";
+import {randomInt, toMoney} from "@/utils/index.ts";
 
-const cardRef = useTemplateRef<HTMLElement | null>('cardRef')
-
-const props = defineProps<{
-  period: Period
-  range: Range
-}>()
+const {period, range} = defineProps<{ period: Period, range: Range }>()
 
 type DataRecord = {
-  date: Date
+  date: Date,
   amount: number
 }
 
-const { width } = useElementSize(cardRef)
-
 const data = ref<DataRecord[]>([])
+const total = computed<string>(() => toMoney(data.value.reduce((acc, {amount}) => acc + amount, 0)))
+const cardRef = useTemplateRef<HTMLElement | null>("cardRef")
 
-watch([() => props.period, () => props.range], () => {
-  const dates = ({
-    daily: eachDayOfInterval,
-    weekly: eachWeekOfInterval,
-    monthly: eachMonthOfInterval
-  } as Record<Period, typeof eachDayOfInterval>)[props.period](props.range)
-
-  const min = 1000
-  const max = 10000
-
-  data.value = dates.map(date => ({ date, amount: Math.floor(Math.random() * (max - min + 1)) + min }))
-}, { immediate: true })
+const {width} = useElementSize(cardRef)
 
 const x = (_: DataRecord, i: number) => i
 const y = (d: DataRecord) => d.amount
-
-const total = computed(() => data.value.reduce((acc: number, { amount }) => acc + amount, 0))
-
-const formatNumber = new Intl.NumberFormat('en', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format
-
-const formatDate = (date: Date): string => {
-  return ({
-    daily: format(date, 'd MMM'),
-    weekly: format(date, 'd MMM'),
-    monthly: format(date, 'MMM yyy')
-  })[props.period]
-}
 
 const xTicks = (i: number) => {
   if (i === 0 || i === data.value.length - 1 || !data.value[i]) {
@@ -57,52 +30,68 @@ const xTicks = (i: number) => {
   return formatDate(data.value[i].date)
 }
 
-const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amount)}`
+function formatDate(date: Date): string {
+  return ({
+    daily: format(date, "d MMM"),
+    weekly: format(date, "d MMM"),
+    monthly: format(date, "MMM yyy")
+  } as Record<Period, any>)[period]
+}
+
+watch([() => period, () => range], () => {
+  //daily:
+  const dates = ({
+    daily: eachDayOfInterval,
+    weekly: eachWeekOfInterval,
+    monthly: eachMonthOfInterval
+  } as Record<Period, typeof eachDayOfInterval>)[period](range)
+
+  const min = 1000
+  const max = 10000
+  data.value = dates.map(date => ({date, amount: randomInt(min, max)}))
+}, {immediate: true})
+
+const template = (d: DataRecord) => `${formatDate(d.date)}:${toMoney(d.amount)}`
 </script>
 
 <template>
   <UCard ref="cardRef" :ui="{ body: '!px-0 !pt-0 !pb-3' }">
     <template #header>
       <div>
-        <p class="text-xs text-(--ui-text-muted) uppercase mb-1.5">
-          Revenue
-        </p>
-        <p class="text-3xl text-(--ui-text-highlighted) font-semibold">
-          {{ formatNumber(total) }}
-        </p>
+        <p class="text-xs text-(--ui-text-muted) uppercase mb-2.5" v-text="'Revenue'"/>
+        <p v-text="total" class="text-3xl font-semibold text-(--ui-text-highlighted)"/>
       </div>
     </template>
-
     <VisXYContainer
-      :data="data"
-      :padding="{ top: 40 }"
-      class="h-96"
-      :width="width"
+        :width="width"
+        :data="data"
+        :padding="{ top: 40 }"
+        class="h-96"
     >
       <VisLine
-        :x="x"
-        :y="y"
-        color="var(--ui-primary)"
+          :x="x"
+          :y="y"
+          color="var(--ui-primary)"
       />
       <VisArea
-        :x="x"
-        :y="y"
-        color="var(--ui-primary)"
-        :opacity="0.1"
+          :x="x"
+          :y="y"
+          color="var(--ui-primary)"
+          :opacity="0.1"
       />
 
       <VisAxis
-        type="x"
-        :x="x"
-        :tick-format="xTicks"
+          type="x"
+          :x="x"
+          :tick-format="xTicks"
       />
 
       <VisCrosshair
-        color="var(--ui-primary)"
-        :template="template"
+          color="var(--ui-primary)"
+          :template="template"
       />
 
-      <VisTooltip />
+      <VisTooltip/>
     </VisXYContainer>
   </UCard>
 </template>

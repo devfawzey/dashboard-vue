@@ -1,32 +1,32 @@
-import './assets/css/main.css'
+import "./assets/main.css";
 
-import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
-import ui from '@nuxt/ui/vue-plugin'
+import {createApp, type App} from "vue";
+import {createNotivue} from "notivue"
 
-import App from './App.vue'
+import 'notivue/notification.css'
+import 'notivue/animations.css'
 
-const app = createApp(App)
+import {createPinia} from "pinia"
+import router from "./router/index.ts"
+import uiPlugin from "@nuxt/ui/vue-plugin";
+import MyApp from "./App.vue";
+import Wrapper from "@/components/base/Wrapper.vue";
+import {ObjectPlugin} from "@vue/runtime-core";
 
-app.use(createRouter({
-  routes: [
-    { path: '/', component: () => import('./pages/index.vue') },
-    { path: '/inbox', component: () => import('./pages/inbox.vue') },
-    { path: '/customers', component: () => import('./pages/customers.vue') },
-    {
-      path: '/settings',
-      component: () => import('./pages/settings.vue'),
-      children: [
-        { path: '', component: () => import('./pages/settings/index.vue') },
-        { path: 'members', component: () => import('./pages/settings/members.vue') },
-        { path: 'notifications', component: () => import('./pages/settings/notifications.vue') },
-        { path: 'security', component: () => import('./pages/settings/security.vue') },
-      ]
+const myPlugin: ObjectPlugin = {
+    install(app: App) {
+        app.component("UWrapper", Wrapper);
+        console.info("plugin installed")
     }
-  ],
-  history: createWebHistory()
-}))
+}
 
-app.use(ui)
+const notivue = createNotivue()
+const app = createApp(MyApp);
 
-app.mount('#app')
+app.use(uiPlugin);
+app.use(myPlugin)
+app.use(notivue);
+app.use(createPinia())
+app.use(router);
+
+app.mount("#app");
