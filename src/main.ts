@@ -1,4 +1,4 @@
-import "./assets/main.css";
+import "./assets/css/main.css";
 
 import {createApp, type App} from "vue";
 import {createNotivue} from "notivue"
